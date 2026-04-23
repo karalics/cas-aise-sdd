@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Classroom Messenger – UI-Mockup</title>
+  <!--
+    Schritt 5 – Minimales UI-Design (Mockup mit simuliertem Verhalten).
+    Ziel:
+      * Vollständige Abdeckung der Anforderungen aus 03-use-cases.md (UC1–UC5, R01–R23, N04/N05).
+      * Simulation des späteren Flask-Endpoints; kein echter Server, alles clientseitig.
+      * Usability-Orientierung an Nielsen-Heuristiken (siehe 05-ui-design.md).
+      * Kein Framework, nur reines HTML/CSS/Vanilla-JS.
+
+    Simulation-Hinweise:
+      * Eine In-Memory-Liste ersetzt die Nachrichtenliste des Flask-Prozesses.
+      * setInterval alle 3 s ahmt <meta http-equiv="refresh" content="3"> nach,
+        ohne die Seite wirklich neu zu laden (damit Nutzertester nicht stören).
+      * Ein "Testnachricht simulieren"-Knopf imitiert einen weiteren Teilnehmer,
+        damit Tester sehen, wie eintreffende Nachrichten wirken.
+      * Der Name wird in localStorage gehalten, um das Cookie-Verhalten (R03)
+        nachzuahmen.
+  -->
+  <style>
+    :root {
+      --bg: #f7f7f5;
+      --surface: #ffffff;
+      --border: #e2e2df;
+      --text: #1a1a1a;
+      --muted: #6b6b6b;
+      --primary: #1f5fb2;
+      --primary-hover: #174a8c;
+      --error: #b91c1c;
+      --own: #eef5ff;
+      --other: #ffffff;
+      --radius: 8px;
+      --gap: 12px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      font-size: 16px;
+      line-height: 1.45;
+    }
+    .app {
+      max-width: 720px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---------- Kopf ---------- */
+    header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--gap);
+    }
+    header h1 {
+      font-size: 1.125rem;
+      margin: 0;
+      font-weight: 600;
+    }
+    .whoami {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .whoami strong { color: var(--text); }
+    .linkbtn {
+      background: none;
+      border: none;
+      color: var(--primary);
+      cursor: pointer;
+      padding: 4px 6px;
+      font: inherit;
+      text-decoration: underline;
+    }
+    .linkbtn:hover { color: var(--primary-hover); }
+
+    /* ---------- Hauptbereich ---------- */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      gap: var(--gap);
+      min-height: 0;
+    }
+
+    /* ---------- Namensformular ---------- */
+    .name-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .name-form h2 { margin: 0; font-size: 1.25rem; }
+    .name-form p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+    .name-form label { font-weight: 600; }
+    .name-form input[type=text] {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-family: inherit;
+    }
+    .name-form input[type=text]:focus {
+      outline: 2px solid var(--primary);
+      outline-offset: 1px;
+    }
+    .row {
+      display: flex;
+      gap: var(--gap);
+      align-items: center;
+    }
+    .row > input[type=text] { flex: 1; }
+
+    button.primary {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.primary:hover { background: var(--primary-hover); }
+    button.primary:disabled { background: #9aa6b2; cursor: not-allowed; }
+
+    .error {
+      color: var(--error);
+      font-size: 0.9rem;
+      min-height: 1.2em;
+    }
+
+    /* ---------- Chatbereich ---------- */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 260px;
+    }
+    .empty {
+      color: var(--muted);
+      font-style: italic;
+      margin: auto;
+    }
+    .msg {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      background: var(--other);
+      max-width: 85%;
+      word-wrap: break-word;
+    }
+    .msg.own {
+      background: var(--own);
+      align-self: flex-end;
+      border-color: #cfe0f7;
+    }
+    .meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .meta .author { font-weight: 600; color: var(--text); }
+    .text { white-space: pre-wrap; }
+
+    /* ---------- Eingabe ---------- */
+    .compose {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .compose .row { gap: 8px; }
+    .compose input[type=text] {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-family: inherit;
+    }
+    .compose input[type=text]:focus {
+      outline: 2px solid var(--primary);
+      outline-offset: 1px;
+    }
+    .statusline {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .counter.warn { color: var(--error); }
+
+    /* ---------- Footer für Simulation ---------- */
+    footer {
+      padding: 10px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    footer button {
+      background: none;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 4px 8px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    footer button:hover { color: var(--text); border-color: var(--text); }
+
+    /* Sichtbarkeitswechsel */
+    .hidden { display: none !important; }
+
+    @media (max-width: 500px) {
+      header h1 { font-size: 1rem; }
+      main { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Classroom Messenger">
+    <!-- ============================================================== -->
+    <!-- Kopfzeile – nur sichtbar in Chat-Ansicht                         -->
+    <!-- ============================================================== -->
+    <header id="chatHeader" class="hidden">
+      <h1>Klassenzimmer</h1>
+      <div>
+        <span class="whoami">Angemeldet als <strong id="whoamiName">–</strong></span>
+        <button class="linkbtn" id="btnRename" aria-label="Anzeigename ändern">Name ändern</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- ============================================================== -->
+      <!-- Ansicht 1: Namenseingabe (UC1, UC5)                              -->
+      <!-- ============================================================== -->
+      <section id="viewName" aria-labelledby="nameHeadline">
+        <form class="name-form" id="nameForm" autocomplete="off" novalidate>
+          <h2 id="nameHeadline">Willkommen im Classroom Messenger</h2>
+          <p>Bitte gib einen Anzeigenamen ein, unter dem du im Klassenzimmer schreibst.</p>
+          <label for="nameInput">Anzeigename</label>
+          <div class="row">
+            <input type="text" id="nameInput" name="name"
+                   maxlength="40" minlength="1" required
+                   placeholder="z. B. Anna"
+                   aria-describedby="nameHint nameError">
+            <button type="submit" class="primary" id="btnEnter">Betreten</button>
+          </div>
+          <div id="nameHint" class="statusline">
+            <span>1–40 Zeichen</span>
+            <span class="counter" id="nameCounter">0 / 40</span>
+          </div>
+          <div id="nameError" class="error" role="alert" aria-live="polite"></div>
+        </form>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- Ansicht 2: Chat (UC2, UC3, UC4)                                  -->
+      <!-- ============================================================== -->
+      <section id="viewChat" class="hidden" aria-labelledby="chatHeadline" style="flex:1; display:flex; flex-direction:column; gap:var(--gap); min-height:0;">
+        <h2 id="chatHeadline" class="sr-only" style="position:absolute; left:-9999px;">Nachrichten</h2>
+
+        <div class="messages" id="messagesList" aria-live="polite" aria-relevant="additions">
+          <!-- Platzhalter R18a oder Nachrichten dynamisch eingefügt -->
+        </div>
+
+        <form class="compose" id="composeForm" autocomplete="off" novalidate>
+          <div class="row">
+            <input type="text" id="messageInput" name="content"
+                   maxlength="500" minlength="1" required
+                   placeholder="Nachricht schreiben …"
+                   aria-describedby="composeHint composeError">
+            <button type="submit" class="primary" id="btnSend">Senden</button>
+          </div>
+          <div id="composeHint" class="statusline">
+            <span>Enter zum Senden · max. 500 Zeichen</span>
+            <span class="counter" id="messageCounter">0 / 500</span>
+          </div>
+          <div id="composeError" class="error" role="alert" aria-live="polite"></div>
+        </form>
+      </section>
+    </main>
+
+    <!-- ============================================================== -->
+    <!-- Footer nur für die Simulation / Nutzertest                       -->
+    <!-- ============================================================== -->
+    <footer>
+      <span>Mockup · simuliert `&lt;meta refresh&gt;` alle 3 s.</span>
+      <span>
+        <button type="button" id="btnSimOther">Testnachricht eines anderen Teilnehmers</button>
+        <button type="button" id="btnReset">Zustand zurücksetzen</button>
+      </span>
+    </footer>
+  </div>
+
+  <script>
+    /* ------------------------------------------------------------------
+       State – ersetzt den späteren Flask-Prozess (in-memory).
+       ------------------------------------------------------------------ */
+    const state = {
+      currentUser: null,         // Anzeigename (aus localStorage simuliert Cookie)
+      messages: [],              // Liste {author, text, ts}
+    };
+
+    const KEY = "classroom-messenger.name";
+
+    /* ------------------------------------------------------------------
+       Hilfsfunktionen
+       ------------------------------------------------------------------ */
+    function loadName() {
+      try { return localStorage.getItem(KEY); } catch (e) { return null; }
+    }
+    function saveName(name) {
+      try { localStorage.setItem(KEY, name); } catch (e) { /* ignore */ }
+    }
+    function clearName() {
+      try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+    }
+    function fmtTime(d) {
+      const hh = String(d.getUTCHours()).padStart(2, "0");
+      const mm = String(d.getUTCMinutes()).padStart(2, "0");
+      return hh + ":" + mm;
+    }
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    /* ------------------------------------------------------------------
+       Rendering
+       ------------------------------------------------------------------ */
+    const elViewName = document.getElementById("viewName");
+    const elViewChat = document.getElementById("viewChat");
+    const elHeader = document.getElementById("chatHeader");
+    const elWhoami = document.getElementById("whoamiName");
+    const elMessages = document.getElementById("messagesList");
+
+    function showNameView(prefill) {
+      elViewName.classList.remove("hidden");
+      elViewChat.classList.add("hidden");
+      elHeader.classList.add("hidden");
+      const input = document.getElementById("nameInput");
+      input.value = prefill || "";
+      updateCounter("nameInput", "nameCounter", 40);
+      setTimeout(() => input.focus(), 0);
+    }
+
+    function showChatView() {
+      elViewName.classList.add("hidden");
+      elViewChat.classList.remove("hidden");
+      elHeader.classList.remove("hidden");
+      elWhoami.textContent = state.currentUser || "–";
+      renderMessages();
+      setTimeout(() => document.getElementById("messageInput").focus(), 0);
+    }
+
+    function renderMessages() {
+      if (state.messages.length === 0) {
+        elMessages.innerHTML = '<div class="empty">Noch keine Nachrichten</div>';
+        return;
+      }
+      const me = state.currentUser;
+      const html = state.messages.map(m => {
+        const own = m.author === me ? " own" : "";
+        return '<div class="msg' + own + '">'
+             +   '<div class="meta"><span class="author">' + escapeHtml(m.author) + '</span> · ' + fmtTime(new Date(m.ts)) + ' UTC</div>'
+             +   '<div class="text">' + escapeHtml(m.text) + '</div>'
+             + '</div>';
+      }).join("");
+      elMessages.innerHTML = html;
+      // Neueste Nachricht unten → automatisch nach unten scrollen
+      elMessages.scrollTop = elMessages.scrollHeight;
+    }
+
+    /* ------------------------------------------------------------------
+       Zeichenzähler (Unterstützung für R14a/R14b + UX)
+       ------------------------------------------------------------------ */
+    function updateCounter(inputId, counterId, max) {
+      const i = document.getElementById(inputId);
+      const c = document.getElementById(counterId);
+      const len = i.value.length;
+      c.textContent = len + " / " + max;
+      c.classList.toggle("warn", len >= max);
+    }
+    document.getElementById("nameInput").addEventListener("input", () =>
+      updateCounter("nameInput", "nameCounter", 40));
+    document.getElementById("messageInput").addEventListener("input", () =>
+      updateCounter("messageInput", "messageCounter", 500));
+
+    /* ------------------------------------------------------------------
+       Namensformular (UC1, UC5)
+       ------------------------------------------------------------------ */
+    document.getElementById("nameForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const val = document.getElementById("nameInput").value.trim();
+      const err = document.getElementById("nameError");
+      if (val.length === 0) {
+        err.textContent = "Bitte einen Namen eingeben.";
+        return;
+      }
+      if (val.length > 40) {
+        err.textContent = "Höchstens 40 Zeichen.";
+        return;
+      }
+      err.textContent = "";
+      state.currentUser = val;
+      saveName(val);
+      showChatView();
+    });
+
+    document.getElementById("btnRename").addEventListener("click", () => {
+      showNameView(state.currentUser);
+    });
+
+    /* ------------------------------------------------------------------
+       Nachricht senden (UC3)
+       ------------------------------------------------------------------ */
+    document.getElementById("composeForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const input = document.getElementById("messageInput");
+      const err = document.getElementById("composeError");
+      const text = input.value.trim();
+      if (text.length === 0) {
+        // R12: leere Nachrichten werden stillschweigend ignoriert
+        input.value = "";
+        updateCounter("messageInput", "messageCounter", 500);
+        return;
+      }
+      if (text.length > 500) {
+        err.textContent = "Höchstens 500 Zeichen.";
+        return;
+      }
+      err.textContent = "";
+      state.messages.push({
+        author: state.currentUser,
+        text: text,
+        ts: new Date().toISOString(),
+      });
+      input.value = "";
+      updateCounter("messageInput", "messageCounter", 500);
+      renderMessages();
+    });
+
+    /* ------------------------------------------------------------------
+       Auto-Refresh simuliert <meta refresh> (R19)
+       ------------------------------------------------------------------ */
+    setInterval(() => {
+      if (!state.currentUser) return;
+      // In der echten App würde <meta refresh> die Seite neu laden und damit
+      // neue Nachrichten einholen. Hier rendern wir einfach neu.
+      renderMessages();
+    }, 3000);
+
+    /* ------------------------------------------------------------------
+       Simulation eines zweiten Teilnehmers (nur für Nutzertests)
+       ------------------------------------------------------------------ */
+    const simNames = ["Ben", "Clara", "David", "Emma"];
+    const simSnippets = [
+      "Hallo zusammen!",
+      "Könnt ihr mir bei Aufgabe 3 helfen?",
+      "Ich verstehe das leider nicht.",
+      "Danke, jetzt ist es klar.",
+      "Wann ist die nächste Stunde?",
+    ];
+    document.getElementById("btnSimOther").addEventListener("click", () => {
+      const name = simNames[Math.floor(Math.random() * simNames.length)];
+      const text = simSnippets[Math.floor(Math.random() * simSnippets.length)];
+      state.messages.push({ author: name, text: text, ts: new Date().toISOString() });
+      renderMessages();
+    });
+
+    document.getElementById("btnReset").addEventListener("click", () => {
+      state.messages = [];
+      state.currentUser = null;
+      clearName();
+      showNameView("");
+    });
+
+    /* ------------------------------------------------------------------
+       Start
+       ------------------------------------------------------------------ */
+    (function start() {
+      const saved = loadName();
+      if (saved && saved.trim().length > 0) {
+        state.currentUser = saved.trim();
+        showChatView();
+      } else {
+        showNameView("");
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+# Render.com Blueprint für den Classroom Messenger (TRL4-Prototyp).
+# Siehe https://render.com/docs/blueprint-spec
+#
+# Wichtige Randbedingungen (aus 03-use-cases.md, N01–N10):
+#   * Genau ein Gunicorn-Worker, damit die In-Memory-Nachrichtenliste
+#     für alle Requests dieselbe bleibt (N10).
+#   * `$PORT` wird von Render gesetzt und muss vom Server gebunden werden (N09).
+services:
+  - type: web
+    name: classroom-messenger
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app --workers 1 --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.3"
