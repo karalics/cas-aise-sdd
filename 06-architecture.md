@@ -17,7 +17,7 @@ Ein webbasierter Klassenzimmer-Messenger, in dem Teilnehmer/innen kurze Textnach
 | Webserver (Gunicorn)  | Produktionsserver auf render.com, startet den Flask-Prozess.          |
 | Web-App (`app.py`)    | Einziges Flask-Modul; rendert HTML, nimmt Formular-POSTs an, hält die In-Memory-Liste. |
 | Template (inline)     | Jinja2-String im selben File – erzeugt die zwei Ansichten „Name“ und „Chat“. |
-| Browser-Client        | Standard-HTML-Formular + `<meta http-equiv="refresh">`. Kein JavaScript. |
+| Browser-Client        | Standard-HTML-Formular + ~15-zeiliges Vanilla-JS-Polling (`fetch`/`setInterval` alle 3 s, ersetzt nur den Inhalt der Nachrichten­liste). Kein Framework, keine externen Skripte. |
 | Cookie                | Transportiert den Anzeigenamen. `HttpOnly`, `SameSite=Lax`, `Path=/`, 30 Tage. |
 
 ```
@@ -93,7 +93,7 @@ gunicorn app:app --workers 1 --bind 0.0.0.0:5000
 2. **Ein Worker:** `--workers 1` ist zwingend, damit die In-Memory-Liste konsistent bleibt.
 3. **Keine Authentifizierung:** Jede Person mit der URL kann mitlesen und schreiben. *Bewusste MVP-Entscheidung.*
 4. **Speicherwachstum:** Die Nachrichtenliste wächst unbegrenzt innerhalb einer Laufzeit. Für typische Unterrichtssitzungen unkritisch.
-5. **`<meta refresh>`:** Aktuelle Browser unterstützen das weiterhin; scrollt die Seite bei jedem Reload ans Ende (Chat-Sortierung „neueste unten“ hilft).
+5. **Aktualisierung:** Ursprünglich `<meta http-equiv="refresh">` – nach einem Deployment-Test verworfen, weil dadurch während des Tippens das Eingabefeld geleert wurde. Ersetzt durch ein kurzes Vanilla-JS-Polling auf `/`, das nur den Inhalt der Nachrichtenliste ersetzt. Eingabe und Scroll-Position bleiben erhalten. Einzelner Endpoint, kein Push/WebSocket, kein Framework.
 
 ---
 

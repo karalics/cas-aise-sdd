@@ -52,7 +52,6 @@ PAGE = """<!DOCTYPE html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  {% if view == "chat" %}<meta http-equiv="refresh" content="3">{% endif %}
   <title>Classroom Messenger</title>
   <style>
     :root {
@@ -132,6 +131,31 @@ PAGE = """<!DOCTYPE html>
         <div class="statusline">Enter zum Senden · max. 500 Zeichen</div>
       </form>
     </main>
+    <script>
+      // R19: alle 3 s neue Nachrichten holen – ohne die Seite neu zu laden,
+      // damit weder Eingabe noch Scroll-Position verloren gehen. Kein
+      // Framework, reines Vanilla-JS (konform zu R18, kein Push/WebSocket
+      // konform zu R20).
+      (function () {
+        var list = document.querySelector('.messages');
+        if (list) { list.scrollTop = list.scrollHeight; }
+        async function poll() {
+          try {
+            var r = await fetch(window.location.pathname, { credentials: 'same-origin' });
+            if (!r.ok) return;
+            var html = await r.text();
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            var next = doc.querySelector('.messages');
+            var cur = document.querySelector('.messages');
+            if (next && cur && next.innerHTML !== cur.innerHTML) {
+              cur.innerHTML = next.innerHTML;
+              cur.scrollTop = cur.scrollHeight;
+            }
+          } catch (e) { /* Netzwerkfehler ignorieren, nächster Tick versucht es erneut */ }
+        }
+        setInterval(poll, 3000);
+      })();
+    </script>
   {% else %}
     <main>
       <form class="name-form" method="post" action="{{ url_for('index') }}" autocomplete="off">

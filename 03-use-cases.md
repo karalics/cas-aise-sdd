@@ -185,8 +185,8 @@
 
 | ID   | Anforderung                                                                                                    | Quelle   |
 |------|----------------------------------------------------------------------------------------------------------------|----------|
-| R19  | Die Chat-Seite MUSS sich ohne Benutzeraktion alle 3 Sekunden aktualisieren (via `<meta http-equiv="refresh">`).| UC4, F5  |
-| R20  | Die Aktualisierung DARF KEINEN Push-/WebSocket-Dienst voraussetzen.                                            | F5, NFA  |
+| R19  | Die Chat-Ansicht MUSS sich ohne Benutzeraktion etwa alle 3 Sekunden mit neuen Nachrichten aktualisieren und dabei **weder Eingabe noch Scroll-Position zurücksetzen**. Implementiert als minimales Vanilla-JS-Polling auf denselben Endpoint `/`; das ursprünglich vorgesehene `<meta http-equiv="refresh">` wurde verworfen, weil es das Eingabefeld während des Tippens löschte (Finding nach Deployment). | UC4, F5 |
+| R20  | Die Aktualisierung DARF KEINEN Push-/WebSocket-Dienst voraussetzen und KEIN JavaScript-Framework einbinden (reines Vanilla-JS ist erlaubt). | F5, NFA |
 
 ### Sicherheit & Encoding (ergänzt durch Schritt 4)
 
